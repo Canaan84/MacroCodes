@@ -93,17 +93,14 @@ while(distance > tol)
     
     for iz = 1:Nz
         for ik = 1:Nk
+            X = zeros(1, Nk);
             for jk = 1:IKHat(ik, iz)            
                 R = log(z(iz)*k(ik)^alpha + (1-delta)*k(ik) - k(jk));
                 Ev = Pi(iz, :)*v(jk, :).';
-                if(R + beta*Ev > Tv(ik, iz))
-                    Tv(ik, iz) = R + beta*Ev;
-                    G(ik, iz) = jk;
-
-                end
-            
+                
+                X(jk) = R + beta*Ev;
             end
-
+            [Tv(ik, iz), G(ik, iz)] = max(X);
 
         end
 
@@ -147,7 +144,7 @@ zlabel('g(k, z)')
 %(c)
 
 kSim = zeros(1, T); ikSim = kSim; cSim = kSim; iSim = kSim; ySim = kSim;
-kSim(1) = min(k); ikSim(1) = 1;
+kSim(1) = k(10); ikSim(1) = 10;
 
 for t = 1:T-1
     ikSim(t+1) = G(ikSim(t), izSim(t));
