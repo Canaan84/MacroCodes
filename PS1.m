@@ -90,14 +90,13 @@ end
 
 
 while(distance > tol)
-    
     for iz = 1:Nz
         for ik = 1:Nk
             X = zeros(1, Nk);
             for jk = 1:IKHat(ik, iz)            
                 R = log(z(iz)*k(ik)^alpha + (1-delta)*k(ik) - k(jk));
                 Ev = Pi(iz, :)*v(jk, :).';
-                
+
                 X(jk) = R + beta*Ev;
             end
             [Tv(ik, iz), G(ik, iz)] = max(X);
@@ -112,6 +111,8 @@ while(distance > tol)
     s = sprintf( 'Iteration %i: ||Tv-v|| = %.4f', ...
     iter, distance);
     disp(s)
+
+    
 end
 
 kNext = k(G);
@@ -217,29 +218,29 @@ R = zeros(Nk, Nz);
 
 for ik = 1:Nk
     for iz = 1:Nz
-        R(ik, iz) = (1-nu)*(z(iz)*(nu/w)^nu*k(ik)^alpha)^(1/(1-nu));
+        R(ik, iz) = (1-nu)*(z(iz)*((nu/w)^nu)*(k(ik)^alpha))^(1/(1-nu));
     end
 end
 
 
-psi = @(k, kp) phi/2*((kp-(1-delta)*k)/k)^2*k;
+psi = @(k, kp) phi/2*(((kp-(1-delta)*k)/k)^2)*k;
 
 while(distance > tol)
     
     for iz = 1:Nz
         for ik = 1:Nk
+
+            X = zeros(1, Nk);
             for jk = 1:Nk          
                 capitalCost = p*(k(jk) - (1-delta)*k(ik)) +...
                     psi(k(ik), k(jk));
-                Ev = Pi(iz, :)*transpose(v(jk, :));
-                if(R(ik, iz) - capitalCost + beta*Ev > Tv(ik, iz))
-                    Tv(ik, iz) = R(ik, iz) - capitalCost + beta*Ev;
-                    G(ik, iz) = jk;
+                Ev = Pi(iz, :)*v(jk, :).';
 
-                end
+                X(jk) = R(ik, iz) - capitalCost + beta*Ev;
+
             
             end
-
+            [Tv(ik, iz), G(ik, iz)] = max(X);
 
         end
 
@@ -263,7 +264,7 @@ disp(s)
 
 %(c)
 
-Dv = zeros(Nk-1, Nz); q = zeros(Nk-1, Nz); Q = zeros(Nk-1, Nz);
+Dv = zeros(Nk-1, Nz); q = zeros(Nk-1, Nz); Q = zeros(Nk, Nz);
 
 for l = 1:Nk-1
     Dv(l,:) = (v(l+1, :) - v(l, :))/(k(l+1) - k(l));
@@ -272,9 +273,9 @@ end
 for iz = 1:Nz
     for lk = 1:Nk
         if lk ~= Nk
-            q(lk, iz) = beta*Pi(iz, :)*transpose(Dv(lk, :));
+            q(lk, iz) = beta*Pi(iz, :)*Dv(lk, :).';
         end
-        Q(lk, iz) = beta*Pi(iz, :)*transpose(v(lk, :))/k(lk);
+        Q(lk, iz) = beta*Pi(iz, :)*v(lk, :).'/k(lk);
     end
 end
 
@@ -305,7 +306,7 @@ zlabel('q')
 
 %(d)
 
-T = 1000; kSim = zeros(1, T); iSim = kSim; 
+T = 8000; kSim = zeros(1, T); iSim = kSim; 
 ikSim = kSim; izSim = kSim;
 
 ikSim(1) = 100;
@@ -329,10 +330,92 @@ for t = 1:T-1
     Qt(t) = beta*Pi(izSim(t), :)*v(ikSim(t+1), :)'/kSim(t+1);
 end
 
-X = [ones(length(Qt), 1), Qt'];
-c = (X'*X)\X'*i_k_ratio';
+fitlm(Qt', i_k_ratio')
+
+
+%(e) 
+
+profitRate = zeros(1, T-1);
+for t = 1:T-1
+    profitRate(t) = R(ikSim(t), izSim(t))/k(ikSim(t));
+end
+
+X = [Qt; profitRate];
+fitlm(X', i_k_ratio')
+
+
+
+%(f)
+
+
+Pi = [0.57, 0.43; 0.57, 0.43];
+v = zeros(Nk, Nz); Tv = v;
+iter = 1; distance = 10*tol; G = v;
+
+R = zeros(Nk, Nz);
+
+for ik = 1:Nk
+    for iz = 1:Nz
+        R(ik, iz) = (1-nu)*(z(iz)*((nu/w)^nu)*(k(ik)^alpha))^(1/(1-nu));
+    end
+end
 
 
 
 
+while(distance > tol)
+    
+    for iz = 1:Nz
+        for ik = 1:Nk
 
+            X = zeros(1, Nk);
+            for jk = 1:Nk          
+                capitalCost = p*(k(jk) - (1-delta)*k(ik)) +...
+                    psi(k(ik), k(jk));
+                Ev = Pi(iz, :)*v(jk, :).';
+
+                X(jk) = R(ik, iz) - capitalCost + beta*Ev;
+
+            
+            end
+            [Tv(ik, iz), G(ik, iz)] = max(X);
+
+        end
+
+
+    end
+    distance = max(max(abs(Tv-v)));
+    v = Tv;
+    iter = iter + 1;
+    s = sprintf( 'Iteration %i: ||Tv-v|| = %.6f', ...
+    iter, distance);
+    disp(s)
+end
+
+kNext = k(G);
+
+
+for t = 1:T-1
+    cSumVec  = cumPi(izSim(t), 1:Nz);
+    condMet = efSim(t+1) <= cSumVec;
+    izSim(t+1) = find(condMet, 1, "first");
+    ikSim(t+1) = G(ikSim(t), izSim(t));
+    kSim(t+1) = k(ikSim(t+1));
+    iSim(t) = kSim(t+1) - (1-delta)*kSim(t);
+    i_k_ratio(t) = iSim(t)/kSim(t);
+
+    Qt(t) = beta*Pi(izSim(t), :)*v(ikSim(t+1), :)'/kSim(t+1);
+end
+
+
+profitRate = zeros(1, T-1);
+
+
+for t = 1:T-1
+    profitRate(t) = R(ikSim(t), izSim(t))/k(ikSim(t));
+end
+
+
+
+X = [Qt; profitRate];
+fitlm(X', i_k_ratio')
