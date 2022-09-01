@@ -64,7 +64,7 @@ disp(s)
 %(a)
 
 
-alpha = 0.261; beta = 0.99; delta = 0.0176; Nk = 30;
+alpha = 0.261; beta = 0.99; delta = 0.0176; Nk = 275;
 
 kStar = (alpha / (1/beta - 1 + delta))^(1/(1-alpha));
 
