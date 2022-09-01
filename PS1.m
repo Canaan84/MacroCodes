@@ -1,5 +1,5 @@
 
-%Q1
+%%Q1
 
 %(a)
 sigmaEps = 0.00712; rho = 0.956; Nz = 9;
@@ -57,8 +57,9 @@ zSim = z(izSim);
 s = sprintf('Persistence of Process: %.4f', corrcoef(zSim));
 disp(s)
 
+%% 
 
-%Q2
+%%Q2
 
 
 %(a)
@@ -173,8 +174,8 @@ sp(4) = subplot(2,2,4);
 plot(900:T-1, iSim(900:T-1))
 legend({'Investment'}, 'FontSize',6)
 
-
-%Q3
+%% 
+%%Q3
 
 theta = 0.5; delta = 0.08; beta = 1/1.046; tol = 1e-9;
 diff = tol*10;
@@ -201,7 +202,9 @@ s = sprintf( ['Analytical sol. of k: %.4f, ' ...
 
 disp(s)
 
-%Q4
+%% 
+
+%%Q4
 
 %(b)
 
@@ -275,7 +278,7 @@ for iz = 1:Nz
         if lk ~= Nk
             q(lk, iz) = beta*Pi(iz, :)*Dv(lk, :).';
         end
-        Q(lk, iz) = beta*Pi(iz, :)*v(lk, :).'/k(lk);
+        Q(lk, iz) = beta*(Pi(iz, :)*v(lk, :).')/k(lk);
     end
 end
 
@@ -316,7 +319,7 @@ rng(123456);
 efSim = rand(1, T);
 
 izSim(1) = 1; i_k_ratio = zeros(1, T-1); 
-Qt = zeros(1, T-1);
+QSim = zeros(1, T-1);
 
 for t = 1:T-1
     cSumVec  = cumPi(izSim(t), 1:Nz);
@@ -327,10 +330,10 @@ for t = 1:T-1
     iSim(t) = kSim(t+1) - (1-delta)*kSim(t);
     i_k_ratio(t) = iSim(t)/kSim(t);
 
-    Qt(t) = beta*Pi(izSim(t), :)*v(ikSim(t+1), :)'/kSim(t+1);
+    QSim(t) = beta*Pi(izSim(t), :)*v(ikSim(t+1), :)'/kSim(t+1);
 end
 
-fitlm(Qt', i_k_ratio')
+fitlm(QSim', i_k_ratio')
 
 
 %(e) 
@@ -340,7 +343,7 @@ for t = 1:T-1
     profitRate(t) = R(ikSim(t), izSim(t))/k(ikSim(t));
 end
 
-X = [Qt; profitRate];
+X = [QSim; profitRate];
 fitlm(X', i_k_ratio')
 
 
@@ -404,7 +407,7 @@ for t = 1:T-1
     iSim(t) = kSim(t+1) - (1-delta)*kSim(t);
     i_k_ratio(t) = iSim(t)/kSim(t);
 
-    Qt(t) = beta*Pi(izSim(t), :)*v(ikSim(t+1), :)'/kSim(t+1);
+    QSim(t) = beta*Pi(izSim(t), :)*v(ikSim(t+1), :)'/kSim(t+1);
 end
 
 
@@ -417,5 +420,5 @@ end
 
 
 
-X = [Qt; profitRate];
+X = [QSim; profitRate];
 fitlm(X', i_k_ratio')
