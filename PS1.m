@@ -14,7 +14,7 @@ s = sprintf( 'Median of x:%.4f, Median of z:%.4f', ...
     median(x), median(z));
 disp(s)
 
-
+%%
 %(b)
 
 w = x(2) - x(1); Pi = zeros(Nz, Nz);
@@ -36,7 +36,7 @@ disp(Pi)
 s = sprintf('Transition Probability: %.4f', Pi(medInd, medInd));
 disp(s)
 
-
+%%
 %(c) 
 
 T = 1000; zSim = zeros(1, T); izSim = zSim;
@@ -74,7 +74,7 @@ s = sprintf( 'Median of k: %.4f', ...
     median(k));
 disp(s)
 
-
+%%
 %(b)
 
 tol = 0.001; IKHat = zeros(Nk, Nz); v = zeros(Nk, Nz); Tv = v;
@@ -142,7 +142,7 @@ xlabel('k')
 ylabel('z')
 zlabel('g(k, z)')
 
-
+%%
 %(c)
 
 kSim = zeros(1, T); ikSim = kSim; cSim = kSim; iSim = kSim; ySim = kSim;
@@ -203,7 +203,6 @@ s = sprintf( ['Analytical sol. of k: %.4f, ' ...
 disp(s)
 
 %% 
-
 %%Q4
 
 %(b)
@@ -265,6 +264,7 @@ s = sprintf( ['Max of decision rule: %.4f, ' ...
 
 disp(s)
 
+%%
 %(c)
 
 Dv = zeros(Nk-1, Nz); q = zeros(Nk-1, Nz); Q = zeros(Nk, Nz);
@@ -306,36 +306,46 @@ xlabel('k')
 ylabel('z')
 zlabel('q')
 
-
+%%
 %(d)
 
-T = 8000; kSim = zeros(1, T); iSim = kSim; 
-ikSim = kSim; izSim = kSim;
+T = 8000; kSim = zeros(1, T); 
+ikSim = kSim; izSim = kSim; igSim = kSim;
 
-ikSim(1) = 100;
+ikSim(1) = 100; kSim(1) = k(ikSim(1));
+
 
 cumPi = cumsum(Pi, 2);
-rng(123456);
+rng(1234567);
 efSim = rand(1, T);
 
-izSim(1) = 1; i_k_ratio = zeros(1, T-1); 
-QSim = zeros(1, T-1);
+izSim(1) = 1; igSim(1) = G(ikSim(1), izSim(1));
+Qt = zeros(1, T-1);
 
 for t = 1:T-1
     cSumVec  = cumPi(izSim(t), 1:Nz);
     condMet = efSim(t+1) <= cSumVec;
     izSim(t+1) = find(condMet, 1, "first");
     ikSim(t+1) = G(ikSim(t), izSim(t));
+    igSim(t) = ikSim(t+1);
     kSim(t+1) = k(ikSim(t+1));
-    iSim(t) = kSim(t+1) - (1-delta)*kSim(t);
-    i_k_ratio(t) = iSim(t)/kSim(t);
-
-    QSim(t) = beta*Pi(izSim(t), :)*v(ikSim(t+1), :)'/kSim(t+1);
+   
+    Qt(t) = beta*Pi(izSim(t), :)*(v(ikSim(t+1), :).')/kSim(t+1);
 end
 
-fitlm(QSim', i_k_ratio')
 
+iSim = (k(igSim(1:T-1)) - (1-delta).*kSim(1:T-1)).';
 
+i_k_ratio= (iSim(1:T-1)./kSim(1:T-1).');
+Qt= Qt';
+
+s = sprintf( 'First Regression:');
+
+disp(s)
+
+fitlm(Qt, i_k_ratio)
+
+%%
 %(e) 
 
 profitRate = zeros(1, T-1);
@@ -343,11 +353,16 @@ for t = 1:T-1
     profitRate(t) = R(ikSim(t), izSim(t))/k(ikSim(t));
 end
 
-X = [QSim; profitRate];
-fitlm(X', i_k_ratio')
+X = [Qt.'; profitRate].';
+result1  = fitlm(X, i_k_ratio);
+s = sprintf( 'Second Regression with Profit Rate:');
+
+disp(s)
+
+disp(result1)
 
 
-
+%%
 %(f)
 
 
@@ -398,27 +413,47 @@ end
 kNext = k(G);
 
 
+T = 8000; kSim = zeros(1, T); 
+ikSim = kSim; izSim = kSim; igSim = kSim;
+
+ikSim(1) = 100; kSim(1) = k(ikSim(1));
+
+
+cumPi = cumsum(Pi, 2);
+rng(1234567);
+efSim = rand(1, T);
+
+izSim(1) = 1; igSim(1) = G(ikSim(1), izSim(1));
+Qt = zeros(1, T-1);
+
 for t = 1:T-1
     cSumVec  = cumPi(izSim(t), 1:Nz);
     condMet = efSim(t+1) <= cSumVec;
     izSim(t+1) = find(condMet, 1, "first");
     ikSim(t+1) = G(ikSim(t), izSim(t));
+    igSim(t) = ikSim(t+1);
     kSim(t+1) = k(ikSim(t+1));
-    iSim(t) = kSim(t+1) - (1-delta)*kSim(t);
-    i_k_ratio(t) = iSim(t)/kSim(t);
-
-    QSim(t) = beta*Pi(izSim(t), :)*v(ikSim(t+1), :)'/kSim(t+1);
+   
+    Qt(t) = beta*Pi(izSim(t), :)*(v(ikSim(t+1), :).')/kSim(t+1);
 end
 
 
+iSim = (k(igSim(1:T-1)) - (1-delta).*kSim(1:T-1)).';
+
+i_k_ratio= (iSim(1:T-1)./kSim(1:T-1).');
+
+
+
+
+
 profitRate = zeros(1, T-1);
-
-
 for t = 1:T-1
     profitRate(t) = R(ikSim(t), izSim(t))/k(ikSim(t));
 end
 
+X = [Qt; profitRate].';
+s = sprintf( 'Second Regression with Profit Rate:');
+result2  =fitlm(X, i_k_ratio);
 
-
-X = [QSim; profitRate];
-fitlm(X', i_k_ratio')
+disp(s)
+disp(result2)
