@@ -19,8 +19,9 @@ while(distance > tol)
 
     else
         b = d;
-        c = (1-r)*a + r*b;
         d = c;
+        c = (1-r)*a + r*b;
+        
     end
     distance = b - a;
     
@@ -71,15 +72,17 @@ while(distance > tol)
             [G(ib, iz), Tv(ib, iz)] = goldenSearch(bLowerBar, bUpperBar, obj);
     
         end
-        distance = max(max(abs(Tv-v)));
-        v = Tv;
-        iter = iter + 1;
-        s = sprintf( 'Iteration %i: ||Tv-v|| = %.6f', ...
-        iter, distance);
-        disp(s)
 
 
     end
+
+    distance = max(max(abs(Tv-v)));
+    v = Tv;
+    iter = iter + 1;
+    s = sprintf( 'Iteration %i: ||Tv-v|| = %.6f', ...
+    iter, distance);
+    disp(s)
+
 
 end
 
@@ -107,8 +110,9 @@ function [x, fx] = goldenSearch(a, b, f)
     
         else
             b = d;
-            c = (1-r)*a + r*b;
             d = c;
+            c = (1-r)*a + r*b;
+            
         end
         distance = b - a;
     end
