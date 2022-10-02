@@ -9,12 +9,14 @@ theta = zeros(1, length(alpha));
 den = 1+ sum(cumprod(ones(1, length(alpha)) - alpha));
 theta(1) = 1/den;
 
+% Solve for the stationary distribution by formula
 for j = 2:length(alpha)
     theta(j) = theta(j-1)*(1-alpha(j-1));
 
 end
 
 %(ii)
+% Compute the number of adjustors and aggregate I
 NumOfAdj = theta*alpha';
 
 IVector = kStar* (ones(1, length(alpha)) - (1-delta).^(1:length(alpha)));
@@ -38,7 +40,7 @@ ylabel('mu(k)')
 f = @(x) 20 + x.^2 - 8*x -log(x);
 
 a = 0; b = 10;
-
+% See the golden search section function below
 [xStar, fxStar] = goldenSearch(a, b, f, true);
 
 %%
@@ -48,18 +50,18 @@ a = 0; b = 10;
 display = true;
 
 q = 1;
-
+% See the function Step 1 below
 [v, G] = Step1(q, display);
 
 
 %%
 %(b)
-
+% See the function Step 2 below
 [mu, Gd] = Step2(G, display);
 
 %%
 %(c)
-
+% See the function Step 3 below
 B = Step3(mu, Gd, display);
 
 %%
@@ -70,7 +72,7 @@ beta = 0.99322;
 iter = 0;
 qL = beta + 1e-4; qH = 1.02; tol3 = 1e-5;
 distance3 = tol3*10; 
-
+% Compute the excess demands for the initial bounds
 [vL, GL] = Step1(qL, display);
 [muL, GdL] = Step2(GL, display);
 BL = Step3(muL, GdL, display);
@@ -83,6 +85,8 @@ BH = Step3(muH, GdH, display);
 BM = tol3*10; 
 
 while(distance3>tol3 && abs(BM)>tol3)
+    % Compute the excess demand for the median q
+    % Perform bisection search
     qM = (qL+qH)/2;
     [vM, GM] = Step1(qM, display);
     [muM, GdM] = Step2(GM, display);
@@ -119,7 +123,7 @@ wgrid = [0.1, 1.0];
 
 Nbd = 1000; mu = zeros(Nbd, Nz); 
 bdgrid = linspace(b1grid(1), 4, Nbd);
-
+% Compute the distribution of consumption
 for iz = 1:Nz
     
     for ibd = 1:Nbd
@@ -128,7 +132,7 @@ for iz = 1:Nz
     end
 
 end
-
+% Compute the mean and std of consumption
 CMean = sum(sum(C.*muM));
 CVar = sum(sum(((C-CMean).^2).*muM));
 
