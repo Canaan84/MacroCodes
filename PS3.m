@@ -1,12 +1,15 @@
+clc; clear;
+
 %% Q2
 %(a)
 eta = 2.15; beta = 0.96; alpha = 0.26;
 vu = 0.60; rho = 0.88; sigmaEps = 0.014; delta = 0.07;
 
+% Compute kStar
 temp = alpha/(1/beta-1+delta);
 kStar = ((vu/((1-temp*delta)*eta))^vu * temp)^(1/(1-alpha));
 
-kL = 0.5*kStar; kH = 1.5*kStar; Nk = 37;
+kL = 0.5*kStar; kH = 1.4*kStar; Nk = 37;
 kgrid = logspace(log(kL - kL + 1)/log(10), log(kH - kL + 1)/log(10.0), Nk)';
 kgrid = kgrid + ones(size(kgrid))*(kL-1); kgrid = kgrid';
 
@@ -22,6 +25,7 @@ Nd = 1000; Nm = 7;
 dgrid = linspace(kL, kH, Nd);
 mgrid = linspace(kL, kH, Nm);
 
+% Compute the weight chi and assinged indexes
 condMet = dgrid > kStar;
 i = find(condMet, 1, "first") - 1;
 chi = (dgrid(i+1) - kStar) / (dgrid(i+1) - dgrid(i));
@@ -39,6 +43,7 @@ disp(s)
 %%
 %(c)
 
+% Tauchen method
 Nz = 5;
 
 sigma = sqrt(sigmaEps^2/(1-rho^2));
@@ -78,7 +83,7 @@ zSim(1) = zgrid(3); izSim(1) = 3;
 cumPi = cumsum(Pi, 2);
 efSim = rand(1, T);
 
-
+% Do the simulation
 
 for t = 1:T-1
     cSumVec  = cumPi(izSim(t), 1:Nz);
@@ -108,28 +113,25 @@ betaM_0 = [0.017 0.806; 0.034 0.810; 0.051 0.798; 0.068 0.795; 0.086 0.793];
 betaP_0 = [0.924 -0.415; 0.900 -0.412; 0.875 -0.409; 0.849 -0.407; 0.824 -0.404];
 
 v = zeros(Nk, Nz, Nm); Tv = v; G = v;
-vm = zeros(Nk, Nz); H = zeros(Nk, Nz*Nm);
+vm = zeros(Nk, Nz); H = zeros(Nk, Nz, Nm);
 iter = 0; distance = 10*tol;
+
+
 
 while(distance>tol)
     for im = 1:Nm
-        for iz = 1:Nz
-            
-            
-            EmNext = exp(betaM_0(iz, 1) + betaM_0(iz, 2)*log(mgrid(im)));
-            
-            condMet = mgrid > EmNext;
-            i = find(condMet, 1, "first") - 1;
-            wm = (mgrid(i+1) - EmNext) / (mgrid(i+1) - mgrid(i));
-            
+        for iz = 1:Nz            
+            % Compute vm by interpolation
+            EmNext = exp(betaM_0(iz, 1) + betaM_0(iz, 2)*log(mgrid(im)));  
             for ik = 1:Nk
-                for jz = 1:Nz
-                    vm(ik, jz) = wm*v(ik, jz, i) + (1-wm)*v(ik, jz, i+1);
-                end
-                izm = Nm*(iz-1) + im;
-        
-                H(ik, izm) = Pi(iz, :)*vm(ik, :)';
+                vm(ik, iz) = interpolation(v(ik, iz, :), EmNext, mgrid);
+            end
     
+        end
+        % Compute H() matrix 
+        for iz = 1:Nz
+            for ik = 1:Nk      
+                H(ik, iz, im) = Pi(iz, :)*vm(ik, :)';
             end
         end
     
@@ -139,17 +141,17 @@ while(distance>tol)
     for im = 1:Nm
     
         for iz = 1:Nz
-            izm = Nm*(iz-1) + im;
+            % Set up prices by the forecasting rule
             p = exp(betaP_0(iz, 1) + betaP_0(iz, 2)*log(mgrid(im)));
             w = eta/p;
-    
-            obj = @(kNext)  p*kNext-beta*interpolation(H(:, izm), kNext, kgrid);
+            % Implement GSS method
+            obj = @(kNext)  p*kNext-beta*interpolation(H(:, iz, im), kNext, kgrid);
             [kopt, E0(iz, im)] = goldenSearch(kL, kH, obj, false);
             for ik = 1:Nk
                 n = ((zgrid(iz)*vu*kgrid(ik)^alpha)/w)^(1/(1-vu));
                 pi = zgrid(iz)*(kgrid(ik)^alpha)*(n^vu) -...
-                                w*n + (1+delta)*kgrid(ik);
-    
+                                w*n + (1-delta)*kgrid(ik);
+                % Compute Tv and store the decision rule
                 Tv(ik, iz, im) = pi*p - E0(iz, im);
                 G(ik, iz, im) = kopt;
             end
@@ -181,19 +183,19 @@ end
 %%
 %(f)
 
-s1 = sprintf('EV0(k19|z1, m4)= %.4f', H(19, Nm*(1-1)+4));
+s1 = sprintf('EV0(k19|z1, m4)= %.4f', H(19, 1, 4));
 disp(s1)
-s2 = sprintf('EV0(k19|z3, m4)= %.4f', H(19, Nm*(3-1)+4));
+s2 = sprintf('EV0(k19|z3, m4)= %.4f', H(19, 3, 4));
 disp(s2)
-s3 = sprintf('EV0(k19|z5, m4)= %.4f', H(19, Nm*(5-1)+4));
+s3 = sprintf('EV0(k19|z5, m4)= %.4f', H(19, 5, 4));
 disp(s3)
-s4 = sprintf('EV0(k19|z3, m1)= %.4f', H(19, Nm*(3-1)+1));
+s4 = sprintf('EV0(k19|z3, m1)= %.4f', H(19, 3, 1));
 disp(s4)
-s5 = sprintf('EV0(k19|z3, m7)= %.4f', H(19, Nm*(3-1)+7));
+s5 = sprintf('EV0(k19|z3, m7)= %.4f', H(19, 3, 7));
 disp(s5)
-s6 = sprintf('EV0(k1|z3, m4)= %.4f', H(1, Nm*(3-1)+4));
+s6 = sprintf('EV0(k1|z3, m4)= %.4f', H(1, 3, 4));
 disp(s6)
-s7 = sprintf('EV0(k37|z3, m4)= %.4f', H(37, Nm*(3-1)+4));
+s7 = sprintf('EV0(k37|z3, m4)= %.4f', H(37, 3, 4));
 disp(s7)
 
 %%
