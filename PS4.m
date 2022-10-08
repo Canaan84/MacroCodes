@@ -238,6 +238,49 @@ for t = 1: T
 
 end
 
+%%
+%(e)
+betaM_1 = zeros(Nz, 2); betaP_1 = zeros(Nz, 2); 
+RAdj_M = zeros(Nz, 1); RAdj_P = zeros(Nz, 1);
+for iz = 1:Nz
+    tZ = find(izSim(1:end-1) == iz);
+    X = log(mt(tZ)');
+    Y = log(mt(tZ+1)');
+    mdl = fitlm(X,Y);
+    betaM_1(iz, :) = mdl.Coefficients.Estimate';
+    RAdj_M(iz) = mdl.Rsquared.Adjusted;
+
+    Y = log(pt(tZ+1)');
+    mdl = fitlm(X,Y);
+    betaP_1(iz, :) = mdl.Coefficients.Estimate';
+    RAdj_P(iz) = mdl.Rsquared.Adjusted;
+end
+
+
+
+s1 = sprintf('betaM_1 =');
+disp(s1)
+disp(betaM_1)
+
+s2 = sprintf('betaP_1 =');
+disp(s2)
+disp(betaP_1)
+
+s3 = sprintf('RAdj_M =');
+disp(s3)
+disp(RAdj_M)
+
+s4 = sprintf('RAdj_P =');
+disp(s4)
+disp(RAdj_P)
+
+s1 = sprintf('|| betaM_1 - betaM_0 ||=');
+disp(s1)
+disp(abs(betaM_1 - betaM_0))
+
+s2 = sprintf('|| betaP_1 - betaP_0 ||=');
+disp(s2)  
+disp(abs(betaP_1 - betaP_0))
 
 %%
 %%Piecewise Linear Interpolation Function

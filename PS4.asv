@@ -204,7 +204,7 @@ for t = 1: T
     end
     [fM, ktopt(t), yt(t), it(t), nt(t)] = fC(cM, izt, Ht, mut(t, :), kgrid, dgrid, zgrid, kL, kH, Nd, ...
     beta, eta, alpha, nu, delta);
-
+    ct(t) = cM;
     pt(t) = 1/cM; wt(t) = eta/pt(t);
     
     
@@ -217,16 +217,16 @@ for t = 1: T
 
     if(mod(t, 200) == 0)
         s1 = sprintf('Date %i: (iz, m) = (%i, %.4f)', ...
-        t, izt, m(t));
+        t, izt, mt(t));
 
         disp(s1)
         s2 = sprintf('market clearing p = %.4f', ...
-        p(t));
+        pt(t));
 
         disp(s2)        
 
         s3 = sprintf('(y, i, c, n) = (%.3f, %.3f, %.3f, %.3f)', ...
-        yt(t), it(t), c, nt(t));
+        yt(t), it(t), ct(t), nt(t));
 
         disp(s3)    
 
@@ -238,6 +238,32 @@ for t = 1: T
 
 end
 
+%%
+%(e)
+betaM_1 = zeros(Nz, 2); betaP_1 = zeros(Nz, 2); 
+RAdj_M = zeros(Nz, 1); RAdj_P = zeros(Nz, 1);
+for iz = 1:Nz
+    tZ = find(izSim(1:end-1) == iz);
+    X = log(mt(tZ)');
+    Y = log(mt(tZ+1)');
+    mdl = fitlm(X,Y);
+    betaM_1(iz, :) = mdl.Coefficients.Estimate';
+    RAdj_M(iz) = mdl.Rsquared.Adjusted;
+
+    Y = log(pt(tZ+1)');
+    mdl = fitlm(X,Y);
+    betaP_1(iz, :) = mdl.Coefficients.Estimate';
+    RAdj_P(iz) = mdl.Rsquared.Adjusted;
+end
+
+
+
+s1 = sprintf('betaM_1');
+disp(s1)
+betaM_1
+
+s3 = sprintf('betaP_1');
+disp(s2)
 
 %%
 %%Piecewise Linear Interpolation Function
