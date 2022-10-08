@@ -49,21 +49,29 @@ zSim(1) = zgrid(3); izSim(1) = 3;
 cumPi = cumsum(Pi, 2);
 efSim = rand(1, T);
 
+for t = 1:T-1
+    cSumVec  = cumPi(izSim(t), 1:Nz);
+    condMet = efSim(t+1) <= cSumVec;
+    izSim(t+1) = find(condMet, 1, "first");
+end
+
+zSim = zgrid(izSim);
+
 %%
 %(b)
 
 
-tol = 1e-8; 
+tol1 = 1e-8; 
 betaM_0 = [0.017 0.806; 0.034 0.810; 0.051 0.798; 0.068 0.795; 0.086 0.793];
 betaP_0 = [0.924 -0.415; 0.900 -0.412; 0.875 -0.409; 0.849 -0.407; 0.824 -0.404];
 
 v = zeros(Nk, Nz, Nm); Tv = v; G = v;
 vm = zeros(Nk, Nz); H = zeros(Nk, Nz*Nm);
-iter = 0; distance = 10*tol;
+iter = 0; distance = 10*tol1;
 
 
 
-while(distance>tol)
+while(distance>tol1)
     for im = 1:Nm
         for iz = 1:Nz
             
@@ -139,6 +147,96 @@ disp(s)
 %%
 %(c)
 
+% Compute the weight chi and assinged indexes
+condMet = dgrid > kStar;
+i = find(condMet, 1, "first") - 1;
+chi = (dgrid(i+1) - kStar) / (dgrid(i+1) - dgrid(i));
+
+
+s = sprintf('(i, chi) = (%i, %.4f)', ...
+    i, chi);
+
+disp(s)
+
+mu1 = zeros(1, Nd); 
+mu1(i) = chi; mu1(i+1) = 1 - chi;
+
+%%
+%(d)
+tol2 = 1e-10;
+ktopt = zeros(1, T); mut = zeros(T, Nd);
+mt = ktopt; pt = ktopt; wt = ktopt;
+yt = ktopt; nt = ktopt; it = ktopt; ct = ktopt;
+mut(1, :) = mu1;
+
+for t = 1: T
+    cL = 0.01; cH = 2.0; 
+    mt(t) = mut(t, :)*dgrid';
+    condMet = mgrid > mt(t);
+    im = find(condMet, 1, "first") - 1;
+    wL = (mgrid(im+1) - mt(t)) / (mgrid(im+1) - mgrid(im));
+    izt = izSim(t);
+    
+    Ht = zeros(1, Nk);
+    
+    for ik = 1:Nk
+        Ht(ik) = wL*H(ik, (izt-1)*Nm+im)+ (1-wL)*H(ik, (izt-1)*Nm+im+1);
+    end
+    
+    
+    
+    iter = 0; distance = 10*tol2;
+    while(distance> tol2)
+        cM = (cL+cH)/2;
+        fL = fC(cL, izt, Ht, mut(t, :), kgrid, dgrid, zgrid, kL, kH, Nd, ...
+    beta, eta, alpha, nu, delta); 
+        fM = fC(cM, izt, Ht, mut(t, :), kgrid, dgrid, zgrid, kL, kH, Nd, ...
+    beta, eta, alpha, nu, delta);
+    
+        if fL*fM < 0
+           cH = cM;
+        else
+           cL = cM;
+        end
+    
+        distance = cH - cL;
+        iter = iter + 1;
+    end
+    [fM, ktopt(t), yt(t), it(t), nt(t)] = fC(cM, izt, Ht, mut(t, :), kgrid, dgrid, zgrid, kL, kH, Nd, ...
+    beta, eta, alpha, nu, delta);
+    ct(t) = cM;
+    pt(t) = 1/cM; wt(t) = eta/pt(t);
+    
+    
+    condMet = dgrid > ktopt(t);
+    i = find(condMet, 1, "first") - 1;
+    chi = (dgrid(i+1) - ktopt(t)) / (dgrid(i+1) - dgrid(i));
+    
+    
+    mut(t+1, i) = chi; mut(t+1, i+1) = 1 - chi;
+
+    if(mod(t, 200) == 0)
+        s1 = sprintf('Date %i: (iz, m) = (%i, %.4f)', ...
+        t, izt, mt(t));
+
+        disp(s1)
+        s2 = sprintf('market clearing p = %.4f', ...
+        pt(t));
+
+        disp(s2)        
+
+        s3 = sprintf('(y, i, c, n) = (%.3f, %.3f, %.3f, %.3f)', ...
+        yt(t), it(t), ct(t), nt(t));
+
+        disp(s3)    
+
+        s4 = sprintf('X^D = %.4f', ...
+        fM);
+
+        disp(s4)   
+    end
+
+end
 
 
 %%
@@ -205,4 +303,30 @@ function [x, fx] = goldenSearch(a, b, f, display)
         x, fx);
         disp(s)
     end
+end
+
+
+
+%%
+%%fC function
+function [XD, ktopt, y, i, n] = fC(C, izt, Ht, mu, kgrid, dgrid, zgrid, kL, kH, Nd, ...
+    beta, eta, alpha, nu, delta)
+    
+    obj = @(kNext) 1/C*kNext - beta*interpolation(Ht, kNext, kgrid);
+    ktopt = goldenSearch(kL, kH, obj, false);
+    
+    yt = zeros(1, Nd);
+    for jk = 1:Nd
+        if(mu(jk)>0)
+            w = eta*C;
+            n = ((zgrid(izt)*nu*dgrid(jk)^alpha)/w)^(1/(1-nu));
+            yt(jk) = zgrid(izt)*(dgrid(jk)^alpha)*(n^nu);
+        end
+    
+    end
+    y = mu*yt';
+    i = mu*(ktopt - (1-delta)*dgrid)';
+    Cs = y - i;
+    XD = C - Cs;
+
 end
